@@ -49,6 +49,12 @@ def create_app(development=True):
     api.add_resource(GetEpisodesResource, '/api/episodes/<show_id>/<season>/<minimum_imdb_rating>')
     api.add_resource(GetEpisodeByIdResource, '/api/episodes/<show_id>/<episode_id>')
 
+    from .resources.netflix import GetEpisodeCommentResource
+    from .resources.netflix import EpisodeCommentsResource
+    from .resources.netflix import UpdateEpisodeCommentsResource
+    api.add_resource(GetEpisodeCommentResource, '/api/episodes/comment/<comment_id>')
+    api.add_resource(EpisodeCommentsResource, '/api/episodes/comments/<episode_id>')
+    api.add_resource(UpdateEpisodeCommentsResource, '/api/episodes/comments/<comment_id>/<comment_text>')
 
     return app
 

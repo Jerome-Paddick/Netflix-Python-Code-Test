@@ -33,5 +33,6 @@ class EpisodeComments(db.Model):
     __tablename__ = 'episode_comments'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     episode_id = db.Column(db.ForeignKey('episodes.id', ondelete="CASCADE"), nullable=False)
-    title = db.Column(db.String(256), nullable=False)
+    comment = db.Column(db.String(256), nullable=False)
     created_on = db.Column(db.DateTime, nullable=False, default=db.func.now())
+    updated_on = db.Column(db.DateTime, nullable=True)

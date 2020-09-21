@@ -1,7 +1,7 @@
 import traceback
 from flask import current_app
 from flask_restful import reqparse, Resource
-from ..models.netflix import Episodes, Shows
+from ..models.netflix import Episodes, Shows, EpisodeComments
 from flask_restful_swagger import swagger
 from flask_restful import fields, inputs
 from ..utils.netflix_api import NetflixClient
@@ -289,3 +289,156 @@ class GetEpisodeByIdResource(Resource):
                     'message': 'Unexpected Error in GetEpisodeByIdResource get',
                     'error': str(ex)}, 500
 
+@swagger.model
+class CommentRequet:
+    resource_fields = {
+        "comment": fields.String,
+    }
+    required = ['comment']
+
+class GetEpisodeCommentResource(Resource):
+    @swagger.operation(
+        responseClass=GenericResponse.__name__,
+        responseMessages=[
+            {"code": 200, "message": "Successful Request"},
+            {"code": 500, "message": "Unexpected error"},
+        ]
+    )
+    def get(self, comment_id):
+        """ Gets Comment By ID """
+        try:
+            comment = EpisodeComments.query.get(comment_id)
+            if not comment:
+                return {'status': 'error', 'message': 'Invalid Comment ID'}, 400
+            comment_data = {
+                'comment': comment.comment,
+                'created_on': str(comment.created_on),
+                'updated_on': str(comment.updated_on),
+            }
+            return {'status': 'ok', 'data': comment_data}, 200
+
+        except Exception as ex:
+            return {'status': 'error',
+                    'message': 'Unexpected Error in EpisodeCommentResource get',
+                    'error': str(ex)}, 500
+
+    @swagger.operation(
+        responseClass=GenericResponse.__name__,
+        responseMessages=[
+            {"code": 200, "message": "Successful Request"},
+            {"code": 500, "message": "Unexpected error"},
+        ]
+    )
+    def delete(self, comment_id):
+        """ Deleted Comment By ID """
+        try:
+            comment = EpisodeComments.query.get(comment_id)
+            if not comment:
+                return {'status': 'error', 'message': 'Invalid Comment ID'}, 400
+            EpisodeComments.query.filter(EpisodeComments.id==comment_id).delete()
+            current_app.db.session.commit()
+            return {'status': 'ok', 'message': 'Comment Deleted'}, 200
+
+        except Exception as ex:
+            return {'status': 'error',
+                    'message': 'Unexpected Error in EpisodeCommentResource get',
+                    'error': str(ex)}, 500
+
+
+class UpdateEpisodeCommentsResource(Resource):
+    @swagger.operation(
+        responseClass=GenericResponse.__name__,
+        responseMessages=[
+            {"code": 200, "message": "Successful Request"},
+            {"code": 500, "message": "Unexpected error"},
+        ]
+    )
+    def put(self, comment_id, comment_text):
+        """ Posts Comment on Episode """
+        try:
+            comment = EpisodeComments.query.get(comment_id)
+            if not comment:
+                return {'status': 'error', 'message': 'Invalid Comment ID'}, 400
+
+            comment.comment = comment_text
+            comment.updated_on = datetime.now()
+            current_app.db.session.commit()
+
+            return {'status': 'ok', 'message': 'Comment Posted'}, 200
+
+        except Exception as ex:
+            return {'status': 'error',
+                    'message': 'Unexpected Error in UpdateEpisodeCommentsResource put',
+                    'error': str(ex)}, 500
+
+
+class EpisodeCommentsResource(Resource):
+    @swagger.operation(
+        responseClass=GenericResponse.__name__,
+        responseMessages=[
+            {"code": 200, "message": "Successful Request"},
+            {"code": 500, "message": "Unexpected error"},
+        ]
+    )
+    def get(self, episode_id):
+        """ Gets List of Comments on episode """
+        try:
+            episode = Episodes.query.get(episode_id)
+            if not episode:
+                return {'status': 'error', 'message': 'Invalid Episode ID'}, 400
+
+            comments = episode.comments
+            comment_data = [
+                {
+                    'id': comment.id,
+                    'comment': comment.comment,
+                    'created_on': str(comment.created_on),
+                    'updated_on': str(comment.updated_on)}
+            for comment in comments]
+
+            return {'status': 'ok', 'data': comment_data}, 200
+
+        except Exception as ex:
+            return {'status': 'error',
+                    'message': 'Unexpected Error in EpisodeCommentsResource get',
+                    'error': str(ex)}, 500
+
+
+
+    @swagger.operation(
+        responseClass=GenericResponse.__name__,
+        parameters=[{
+            "dataType": CommentRequet.__name__,
+            "name": "payload", "required": True, "allowMultiple": False, "paramType": "body",
+        }, ],
+        responseMessages=[
+            {"code": 200, "message": "Successful Request"},
+            {"code": 500, "message": "Unexpected error"},
+        ]
+    )
+    def post(self, episode_id):
+        """ Posts Comment on Episode """
+        try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('comment', required=True, type=str)
+            args = parser.parse_args()
+        except:
+            return {'status': 'error', 'message': 'Invalid Request'}, 400
+        try:
+            episode = Episodes.query.get(episode_id)
+            if not episode:
+                return {'status': 'error', 'message': 'Invalid Episode ID'}, 400
+
+            episode_comment = EpisodeComments(
+                comment=args.get('comment'),
+                episode_id=episode_id,
+            )
+            current_app.db.session.add(episode_comment)
+            current_app.db.session.commit()
+
+            return {'status': 'ok', 'message': 'Comment Posted'}, 200
+
+        except Exception as ex:
+            return {'status': 'error',
+                    'message': 'Unexpected Error in EpisodeCommentsResource post',
+                    'error': str(ex)}, 500
