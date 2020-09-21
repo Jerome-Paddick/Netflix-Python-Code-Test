@@ -15,11 +15,58 @@ class GenericResponse:
     }
     required = ['status', 'message']
 
+@swagger.model
+class NestedShowObj:
+    resource_fields = {
+        "id": fields.Integer,
+        "title": fields.String,
+        "year": fields.String,
+        "released": fields.DateTime,
+        "plot": fields.String,
+        "imdb_rating": fields.Float,
+        "seasons": fields.Integer,
+        "language": fields.String,
+        "updated_on": fields.DateTime,
+    }
+
+@swagger.model
+@swagger.nested(data=NestedShowObj.__name__)
+class ShowDataResponse:
+    resource_fields = {
+        "status": fields.String,
+        "data": fields.List(fields.Nested(NestedShowObj.resource_fields)),
+    }
+    required = ['status', 'data']
+
+class NestedEpisodeObj:
+    resource_fields = {
+        "id": fields.Integer,
+        "show_id": fields.String,
+        "year": fields.String,
+        "season": fields.Integer,
+        "episode": fields.Integer,
+        "title": fields.String,
+        "released": fields.DateTime,
+        "plot": fields.String,
+        "imdb_rating": fields.Float,
+        "language": fields.String,
+    }
+@swagger.model
+@swagger.nested(data=NestedEpisodeObj.__name__)
+class EpisodeDataResponse:
+    resource_fields = {
+        "status": fields.String,
+        "data": fields.List(fields.Nested(NestedEpisodeObj.resource_fields)),
+    }
+    required = ['status', 'data']
+
+
 class ShowsResource(Resource):
     @swagger.operation(
-        responseClass=GenericResponse.__name__,
+        responseClass=ShowDataResponse.__name__,
         responseMessages=[
             {"code": 200, "message": "Successful Request"},
+            {"code": 400, "message": "Invalid Request"},
             {"code": 500, "message": "Unexpected error"},
         ]
     )
@@ -61,6 +108,7 @@ class ShowsResource(Resource):
             },],
         responseMessages=[
             {"code": 200, "message": "Successful Request"},
+            {"code": 400, "message": "Invalid Request"},
             {"code": 500, "message": "Unexpected error"},
         ]
     )
@@ -88,8 +136,8 @@ class ShowsResource(Resource):
             show_json = response.json()
 
             duplicate = Shows.query.filter(Shows.title==show_json.get('Title')).count()
-            # if duplicate:
-            #     return {'status': 'error', 'message': 'Show Already Added'}, 500
+            if duplicate:
+                return {'status': 'error', 'message': 'Show Already Added'}, 500
             if show_json.get('Type') != 'series':
                 return {'status': 'error', 'message': 'This is not a series'}, 400
 
@@ -147,11 +195,12 @@ class EpisodesResource(Resource):
         responseClass=GenericResponse.__name__,
         responseMessages=[
             {"code": 200, "message": "Successful Request"},
+            {"code": 400, "message": "Invalid Request"},
             {"code": 500, "message": "Unexpected error"},
         ]
     )
     def post(self, show_id):
-        """ adds episodes for show - TAKES A WHILE """
+        """ adds all episodes for a show - CAN TAKE A WHILE """
         try:
             client = NetflixClient()
             show = Shows.query.get(show_id)
@@ -205,14 +254,15 @@ class EpisodesResource(Resource):
                     'message': f'{Episodes.query.filter(Episodes.show_id==show_id).count()} Episodes Added'}, 400
         except Exception as ex:
             return {'status': 'error',
-                    'message': 'Unexpected Error in AddEpisodesResource post',
+                    'message': 'Unexpected Error in EpisodesResource post',
                     'error': str(ex)}, 500
 
 class GetEpisodesResource(Resource):
     @swagger.operation(
-        responseClass=GenericResponse.__name__,
+        responseClass=EpisodeDataResponse.__name__,
         responseMessages=[
             {"code": 200, "message": "Successful Request"},
+            {"code": 400, "message": "Invalid Request"},
             {"code": 500, "message": "Unexpected error"},
         ]
     )
@@ -248,14 +298,15 @@ class GetEpisodesResource(Resource):
 
         except Exception as ex:
             return {'status': 'error',
-                    'message': 'Unexpected Error in GetEpisodesResourc get',
+                    'message': 'Unexpected Error in GetEpisodesResource get',
                     'error': str(ex)}, 500
 
 class GetEpisodeByIdResource(Resource):
     @swagger.operation(
-        responseClass=GenericResponse.__name__,
+        responseClass=EpisodeDataResponse.__name__,
         responseMessages=[
             {"code": 200, "message": "Successful Request"},
+            {"code": 400, "message": "Invalid Request"},
             {"code": 500, "message": "Unexpected error"},
         ]
     )
@@ -301,6 +352,7 @@ class GetEpisodeCommentResource(Resource):
         responseClass=GenericResponse.__name__,
         responseMessages=[
             {"code": 200, "message": "Successful Request"},
+            {"code": 400, "message": "Invalid Request"},
             {"code": 500, "message": "Unexpected error"},
         ]
     )
@@ -319,13 +371,14 @@ class GetEpisodeCommentResource(Resource):
 
         except Exception as ex:
             return {'status': 'error',
-                    'message': 'Unexpected Error in EpisodeCommentResource get',
+                    'message': 'Unexpected Error in GetEpisodeCommentResource get',
                     'error': str(ex)}, 500
 
     @swagger.operation(
         responseClass=GenericResponse.__name__,
         responseMessages=[
             {"code": 200, "message": "Successful Request"},
+            {"code": 400, "message": "Invalid Request"},
             {"code": 500, "message": "Unexpected error"},
         ]
     )
@@ -341,7 +394,7 @@ class GetEpisodeCommentResource(Resource):
 
         except Exception as ex:
             return {'status': 'error',
-                    'message': 'Unexpected Error in EpisodeCommentResource get',
+                    'message': 'Unexpected Error in GetEpisodeCommentResource get',
                     'error': str(ex)}, 500
 
 
@@ -350,6 +403,7 @@ class UpdateEpisodeCommentsResource(Resource):
         responseClass=GenericResponse.__name__,
         responseMessages=[
             {"code": 200, "message": "Successful Request"},
+            {"code": 400, "message": "Invalid Request"},
             {"code": 500, "message": "Unexpected error"},
         ]
     )
@@ -377,6 +431,7 @@ class EpisodeCommentsResource(Resource):
         responseClass=GenericResponse.__name__,
         responseMessages=[
             {"code": 200, "message": "Successful Request"},
+            {"code": 400, "message": "Invalid Request"},
             {"code": 500, "message": "Unexpected error"},
         ]
     )
@@ -413,6 +468,7 @@ class EpisodeCommentsResource(Resource):
         }, ],
         responseMessages=[
             {"code": 200, "message": "Successful Request"},
+            {"code": 400, "message": "Invalid Request"},
             {"code": 500, "message": "Unexpected error"},
         ]
     )
